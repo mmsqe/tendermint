@@ -127,7 +127,7 @@ func TestTxSearch(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.q, func(t *testing.T) {
-			results, err := indexer.Search(ctx, query.MustParse(tc.q))
+			results, err := indexer.Search(ctx, query.MustCompile(tc.q))
 			assert.NoError(t, err)
 
 			assert.Len(t, results, tc.resultsLength)
@@ -153,7 +153,7 @@ func TestTxSearchWithCancelation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	results, err := indexer.Search(ctx, query.MustParse("account.number = 1"))
+	results, err := indexer.Search(ctx, query.MustCompile(`account.number = 1`))
 	assert.NoError(t, err)
 	assert.Empty(t, results)
 }
@@ -226,7 +226,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.q, func(t *testing.T) {
-			results, err := indexer.Search(ctx, query.MustParse(tc.q))
+			results, err := indexer.Search(ctx, query.MustCompile(tc.q))
 			require.NoError(t, err)
 			for _, txr := range results {
 				for _, tr := range tc.results {
@@ -250,7 +250,7 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 
 	ctx := context.Background()
 
-	results, err := indexer.Search(ctx, query.MustParse("account.number >= 1"))
+	results, err := indexer.Search(ctx, query.MustCompile(`account.number >= 1`))
 	assert.NoError(t, err)
 
 	assert.Len(t, results, 1)
@@ -307,7 +307,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 
 	ctx := context.Background()
 
-	results, err := indexer.Search(ctx, query.MustParse("account.number >= 1"))
+	results, err := indexer.Search(ctx, query.MustCompile(`account.number >= 1`))
 	assert.NoError(t, err)
 
 	require.Len(t, results, 3)
