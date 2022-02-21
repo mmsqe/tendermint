@@ -348,8 +348,8 @@ limit.
 
 The `wait_time` parameter is used to effect polling. If `before` is empty and
 no items are available, the server will wait for up to `wait_time` for matching
-items to arrive at the head of the log. If `wait_time` is zero or negative, the
-server will wait for a default (positive) interval.
+items to arrive at the head of the log. If `wait_time` is zero, the server will
+return whatever eligible items are available immediately.
 
 If `before` non-empty, `wait_time` is ignored: new results are only added to
 the head of the log, so there is no need to wait.  This allows the client to
@@ -664,8 +664,8 @@ The following alternative approaches were considered:
    - [indexer: unbuffered event subscription slow down the consensus][i7247] (#7247)
    - [rpc: remove duplication of events when querying][i7273] (#7273)
 
-[rfc006]:        https://github.com/tendermint/tendermint/blob/main/docs/rfc/rfc-006-event-subscription.md
-[rpc-service]:   https://github.com/tendermint/tendermint/blob/main/rpc/openapi/openapi.yaml
+[rfc006]:        https://github.com/tendermint/tendermint/blob/master/docs/rfc/rfc-006-event-subscription.md
+[rpc-service]:   https://github.com/tendermint/tendermint/blob/master/rpc/openapi/openapi.yaml
 [query-grammar]: https://pkg.go.dev/github.com/tendermint/tendermint@master/internal/pubsub/query/syntax
 [ws]:            https://datatracker.ietf.org/doc/html/rfc6455
 [jsonrpc2]:      https://www.jsonrpc.org/specification
