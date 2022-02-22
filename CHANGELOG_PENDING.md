@@ -11,6 +11,12 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - CLI/RPC/Config
 
   - [config] \#9259 Rename the fastsync section and the fast_sync key blocksync and block_sync respectively
+  - [rpc] \#7121 Remove the deprecated gRPC interface to the RPC service. (@creachadair)
+  - [blocksync] \#7159 Remove support for disabling blocksync in any circumstance. (@tychoish)
+  - [mempool] \#7171 Remove legacy mempool implementation. (@tychoish)
+  - [rpc] \#7575 Rework how RPC responses are written back via HTTP. (@creachadair)
+  - [rpc] \#7713 Remove unused options for websocket clients. (@creachadair)
+  - [config] \#7930 Add new event subscription options and defaults. (@creachadair)
 
 - Apps
 
