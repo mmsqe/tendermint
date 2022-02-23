@@ -67,7 +67,7 @@ func Compile(ast syntax.Query) (*Query, error) {
 	return &Query{ast: ast, conds: conds}, nil
 }
 
-func expandEvents(flattenedEvents map[string][]string) []types.Event {
+func ExpandEvents(flattenedEvents map[string][]string) []types.Event {
 	events := make([]types.Event, len(flattenedEvents))
 
 	for composite, values := range flattenedEvents {
@@ -90,13 +90,24 @@ func expandEvents(flattenedEvents map[string][]string) []types.Event {
 	return events
 }
 
+func FlattenEvents(events []types.Event) map[string][]string {
+	flattenedEvents := make(map[string][]string)
+	for _, event := range events {
+		for _, attr := range event.Attributes {
+			key := event.Type + "." + string(attr.Key)
+			flattenedEvents[key] = append(flattenedEvents[key], string(attr.Value))
+		}
+	}
+	return flattenedEvents
+}
+
 // Matches satisfies part of the pubsub.Query interface.  This implementation
 // never reports an error. A nil *Query matches all events.
 func (q *Query) Matches(events map[string][]string) (bool, error) {
 	if q == nil {
 		return true, nil
 	}
-	return q.matchesEvents(expandEvents(events)), nil
+	return q.matchesEvents(ExpandEvents(events)), nil
 }
 
 // String matches part of the pubsub.Query interface.
