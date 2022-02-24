@@ -361,6 +361,21 @@ func (c *baseRPCClient) ConsensusParams(
 	return result, nil
 }
 
+func (c *baseRPCClient) Events(ctx context.Context, req *ctypes.RequestEvents) (*ctypes.ResultEvents, error) {
+	result := new(ctypes.ResultEvents)
+	// FIXME monstrosity params
+	if _, err := c.caller.Call(ctx, "events", map[string]interface{}{
+		"filter":    req.Filter,
+		"max_items": req.MaxItems,
+		"after":     req.After,
+		"before":    req.Before,
+		"wait_time": req.WaitTime,
+	}, result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (c *baseRPCClient) Health(ctx context.Context) (*ctypes.ResultHealth, error) {
 	result := new(ctypes.ResultHealth)
 	_, err := c.caller.Call(ctx, "health", map[string]interface{}{}, result)
@@ -570,7 +585,7 @@ func (c *baseRPCClient) BroadcastEvidence(
 
 var errNotRunning = errors.New("client is not running. Use .Start() method to start")
 
-// WSEvents is a wrapper around WSClient, which implements EventsClient.
+// WSEvents is a wrapper around WSClient, which implements SubscriptionClient.
 type WSEvents struct {
 	service.BaseService
 	remote   string
@@ -580,6 +595,8 @@ type WSEvents struct {
 	mtx           tmsync.RWMutex
 	subscriptions map[string]chan ctypes.ResultEvent // query -> chan
 }
+
+var _ rpcclient.SubscriptionClient = (*WSEvents)(nil)
 
 func newWSEvents(remote, endpoint string) (*WSEvents, error) {
 	w := &WSEvents{
@@ -620,7 +637,7 @@ func (w *WSEvents) OnStop() {
 	}
 }
 
-// Subscribe implements EventsClient by using WSClient to subscribe given
+// Subscribe implements SubscriptionClient by using WSClient to subscribe given
 // subscriber to query. By default, returns a channel with cap=1. Error is
 // returned if it fails to subscribe.
 //
@@ -653,7 +670,7 @@ func (w *WSEvents) Subscribe(ctx context.Context, subscriber, query string,
 	return outc, nil
 }
 
-// Unsubscribe implements EventsClient by using WSClient to unsubscribe given
+// Unsubscribe implements SubscriptionClient by using WSClient to unsubscribe given
 // subscriber from query.
 //
 // It returns an error if WSEvents is not running.
@@ -676,7 +693,7 @@ func (w *WSEvents) Unsubscribe(ctx context.Context, subscriber, query string) er
 	return nil
 }
 
-// UnsubscribeAll implements EventsClient by using WSClient to unsubscribe
+// UnsubscribeAll implements SubscriptionClient by using WSClient to unsubscribe
 // given subscriber from all the queries.
 //
 // It returns an error if WSEvents is not running.
