@@ -41,9 +41,10 @@ func TestHeaderEvents(t *testing.T) {
 					}
 				})
 			}
-
-			evtTyp := types.EventNewBlockHeader
-			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
+			ectx, cancel := context.WithTimeout(ctx, waitForEventTimeout)
+			defer cancel()
+			query := types.QueryForEvent(types.EventNewBlockHeader).String()
+			evt, err := client.WaitForOneEvent(ectx, c, query)
 			require.Nil(t, err, "%d: %+v", i, err)
 			_, ok := evt.(types.EventDataNewBlockHeader)
 			require.True(t, ok, "%d: %#v", i, evt)
@@ -141,8 +142,9 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 				}
 			}()
 
-			// and wait for confirmation
-			evt, err := client.WaitForOneEvent(c, types.EventTx, waitForEventTimeout)
+			// Wait for the transaction we sent to be confirmed.
+			query := fmt.Sprintf(`tm.event = '%s' AND tx.hash = '%X'`, types.EventTx, types.Tx(tx).Hash())
+			evt, err := client.WaitForOneEvent(ctx, c, query)
 			require.Nil(t, err)
 
 			// and make sure it has the proper info
