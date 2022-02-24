@@ -255,6 +255,7 @@ func cursorInRange(c, before, after cursor.Cursor) bool {
 func marshalItems(items []*eventlog.Item) ([]*ctypes.EventItem, error) {
 	out := make([]*ctypes.EventItem, len(items))
 	for i, itm := range items {
+		// FIXME: align usage after remove type-tag
 		v, err := json.Marshal(itm.Data)
 		if err != nil {
 			return nil, fmt.Errorf("encoding event data: %w", err)
