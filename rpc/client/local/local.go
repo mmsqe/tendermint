@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/internal/eventlog/cursor"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
@@ -125,6 +126,17 @@ func (c *Local) ConsensusState(ctx context.Context) (*ctypes.ResultConsensusStat
 
 func (c *Local) ConsensusParams(ctx context.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
 	return core.ConsensusParams(c.ctx, height)
+}
+
+func (c *Local) Events(ctx context.Context, req *ctypes.RequestEvents) (*ctypes.ResultEvents, error) {
+	var before, after cursor.Cursor
+	if err := before.UnmarshalText([]byte(req.Before)); err != nil {
+		return nil, err
+	}
+	if err := after.UnmarshalText([]byte(req.After)); err != nil {
+		return nil, err
+	}
+	return core.Events(ctx, req.Filter, req.MaxItems, before, after, req.WaitTime)
 }
 
 func (c *Local) Health(ctx context.Context) (*ctypes.ResultHealth, error) {
