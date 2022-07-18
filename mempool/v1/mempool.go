@@ -2,7 +2,6 @@ package v1
 
 import (
 	"fmt"
-	"reflect"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -110,12 +109,12 @@ func WithMetrics(metrics *mempool.Metrics) TxMempoolOption {
 	return func(txmp *TxMempool) { txmp.metrics = metrics }
 }
 
-// Lock obtains a write-lock on the mempool. A caller must be sure to explicitly
-// release the lock when finished.
-func (txmp *TxMempool) Lock() { txmp.mtx.Lock() }
+// Lock implements a required method of the mempool.Mempool interface.
+// Note that in this implementation, locking is handled internally.
+func (txmp *TxMempool) Lock() {}
 
-// Unlock releases a write-lock on the mempool.
-func (txmp *TxMempool) Unlock() { txmp.mtx.Unlock() }
+// Unlock implements a required method of the mempool.Mempool interface.
+func (txmp *TxMempool) Unlock() {}
 
 // Size returns the number of valid transactions in the mempool. It is
 // thread-safe.
@@ -218,30 +217,23 @@ func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo memp
 		return err
 	}
 
-	// Initiate an ABCI CheckTx for this transaction. The callback is
-	// responsible for adding the transaction to the pool if it survives.
-	//
-	// N.B.: We have to issue the call outside the lock. In a local client,
-	// even an "async" call invokes its callback immediately which will make
-	// the callback deadlock trying to acquire the same lock. This isn't a
-	// problem with out-of-process calls, but this has to work for both.
-	reqRes := txmp.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
-	if err := txmp.proxyAppConn.FlushSync(); err != nil {
+	// Invoke an ABCI CheckTx for this transaction.
+	rsp, err := txmp.proxyAppConn.CheckTxSync(abci.RequestCheckTx{Tx: tx})
+	if err != nil {
+		txmp.cache.Remove(tx)
 		return err
 	}
-	reqRes.SetCallback(func(res *abci.Response) {
-		wtx := &WrappedTx{
-			tx:        tx,
-			hash:      tx.Key(),
-			timestamp: time.Now().UTC(),
-			height:    height,
-		}
-		wtx.SetPeer(txInfo.SenderID)
-		txmp.initialTxCallback(wtx, res)
-		if cb != nil {
-			cb(res)
-		}
-	})
+	wtx := &WrappedTx{
+		tx:        tx,
+		hash:      tx.Key(),
+		timestamp: time.Now().UTC(),
+		height:    height,
+	}
+	wtx.SetPeer(txInfo.SenderID)
+	txmp.initialTxCallback(wtx, rsp)
+	if cb != nil {
+		cb(&abci.Response{Value: &abci.Response_CheckTx{CheckTx: rsp}})
+	}
 	return nil
 }
 
@@ -386,9 +378,6 @@ func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
 // If the configuration enables recheck, Update sends each remaining
 // transaction after removing blockTxs to the ABCI CheckTx method.  Any
 // transactions marked as invalid during recheck are also removed.
-//
-// The caller must hold an exclusive mempool lock (by calling txmp.Lock) before
-// calling Update.
 func (txmp *TxMempool) Update(
 	blockHeight int64,
 	blockTxs types.Txs,
@@ -396,18 +385,14 @@ func (txmp *TxMempool) Update(
 	newPreFn mempool.PreCheckFunc,
 	newPostFn mempool.PostCheckFunc,
 ) error {
-	// TODO(creachadair): This would be a nice safety check but requires Go 1.18.
-	// // Safety check: The caller is required to hold the lock.
-	// if txmp.mtx.TryLock() {
-	// 	txmp.mtx.Unlock()
-	// 	panic("mempool: Update caller does not hold the lock")
-	// }
 	// Safety check: Transactions and responses must match in number.
 	if len(blockTxs) != len(deliverTxResponses) {
 		panic(fmt.Sprintf("mempool: got %d transactions but %d DeliverTx responses",
 			len(blockTxs), len(deliverTxResponses)))
 	}
 
+	txmp.mtx.Lock()
+	defer txmp.mtx.Unlock()
 	txmp.height = blockHeight
 	txmp.notifiedTxsAvailable = false
 
@@ -462,31 +447,22 @@ func (txmp *TxMempool) Update(
 // transactions are evicted.
 //
 // Finally, the new transaction is added and size stats updated.
-func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
-	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
-	if !ok {
-		txmp.logger.Error("mempool: received incorrect result type in CheckTx callback",
-			"expected", reflect.TypeOf(&abci.Response_CheckTx{}).Name(),
-			"got", reflect.TypeOf(res.Value).Name(),
-		)
-		return
-	}
-
+func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, checkTxRes *abci.ResponseCheckTx) {
 	txmp.mtx.Lock()
 	defer txmp.mtx.Unlock()
 
 	var err error
 	if txmp.postCheck != nil {
-		err = txmp.postCheck(wtx.tx, checkTxRes.CheckTx)
+		err = txmp.postCheck(wtx.tx, checkTxRes)
 	}
 
-	if err != nil || checkTxRes.CheckTx.Code != abci.CodeTypeOK {
+	if err != nil || checkTxRes.Code != abci.CodeTypeOK {
 		txmp.logger.Info(
 			"rejected bad transaction",
 			"priority", wtx.Priority(),
 			"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 			"peer_id", wtx.peers,
-			"code", checkTxRes.CheckTx.Code,
+			"code", checkTxRes.Code,
 			"post_check_err", err,
 		)
 
@@ -501,13 +477,13 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 		// If there was a post-check error, record its text in the result for
 		// debugging purposes.
 		if err != nil {
-			checkTxRes.CheckTx.MempoolError = err.Error()
+			checkTxRes.MempoolError = err.Error()
 		}
 		return
 	}
 
-	priority := checkTxRes.CheckTx.Priority
-	sender := checkTxRes.CheckTx.Sender
+	priority := checkTxRes.Priority
+	sender := checkTxRes.Sender
 
 	// Disallow multiple concurrent transactions from the same sender assigned
 	// by the ABCI application. As a special case, an empty sender is not
@@ -521,7 +497,7 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 				"tx", fmt.Sprintf("%X", w.tx.Hash()),
 				"sender", sender,
 			)
-			checkTxRes.CheckTx.MempoolError =
+			checkTxRes.MempoolError =
 				fmt.Sprintf("rejected valid incoming transaction; tx already exists for sender %q (%X)",
 					sender, w.tx.Hash())
 			txmp.metrics.RejectedTxs.Add(1)
@@ -556,7 +532,7 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 				"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 				"err", err.Error(),
 			)
-			checkTxRes.CheckTx.MempoolError =
+			checkTxRes.MempoolError =
 				fmt.Sprintf("rejected valid incoming transaction; mempool is full (%X)",
 					wtx.tx.Hash())
 			txmp.metrics.RejectedTxs.Add(1)
@@ -602,7 +578,7 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 		}
 	}
 
-	wtx.SetGasWanted(checkTxRes.CheckTx.GasWanted)
+	wtx.SetGasWanted(checkTxRes.GasWanted)
 	wtx.SetPriority(priority)
 	wtx.SetSender(sender)
 	txmp.insertTx(wtx)
