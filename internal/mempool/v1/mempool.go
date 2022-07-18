@@ -3,7 +3,6 @@ package v1
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -41,8 +40,7 @@ type TxMempool struct {
 	cache        mempool.TxCache // seen transactions
 
 	// Atomically-updated fields
-	txsBytes  int64 // atomic: the total size of all transactions in the mempool, in bytes
-	txRecheck int64 // atomic: the number of pending recheck calls
+	txsBytes int64 // atomic: the total size of all transactions in the mempool, in bytes
 
 	// Synchronized fields, protected by mtx.
 	mtx                  *sync.RWMutex
@@ -82,8 +80,6 @@ func NewTxMempool(
 	if cfg.CacheSize > 0 {
 		txmp.cache = mempool.NewLRUTxCache(cfg.CacheSize)
 	}
-
-	proxyAppConn.SetResponseCallback(txmp.recheckTxCallback)
 
 	for _, opt := range options {
 		opt(txmp)
@@ -182,7 +178,6 @@ func (txmp *TxMempool) CheckTx(
 	cb func(*abci.Response),
 	txInfo mempool.TxInfo,
 ) error {
-
 	// During the initial phase of CheckTx, we do not need to modify any state.
 	// A transaction will not actually be added to the mempool until it survives
 	// a call to the ABCI CheckTx method and size constraint checks.
@@ -224,31 +219,23 @@ func (txmp *TxMempool) CheckTx(
 		return err
 	}
 
-	// Initiate an ABCI CheckTx for this transaction. The callback is
-	// responsible for adding the transaction to the pool if it survives.
-	//
-	// N.B.: We have to issue the call outside the lock. In a local client,
-	// even an "async" call invokes its callback immediately which will make
-	// the callback deadlock trying to acquire the same lock. This isn't a
-	// problem with out-of-process calls, but this has to work for both.
-	reqRes, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
+	// Invoke an ABCI CheckTx for this transaction.
+	rsp, err := txmp.proxyAppConn.CheckTxSync(ctx, abci.RequestCheckTx{Tx: tx})
 	if err != nil {
 		txmp.cache.Remove(tx)
 		return err
 	}
-	reqRes.SetCallback(func(res *abci.Response) {
-		wtx := &WrappedTx{
-			tx:        tx,
-			hash:      tx.Key(),
-			timestamp: time.Now().UTC(),
-			height:    height,
-		}
-		wtx.SetPeer(txInfo.SenderID)
-		txmp.initialTxCallback(wtx, res)
-		if cb != nil {
-			cb(res)
-		}
-	})
+	wtx := &WrappedTx{
+		tx:        tx,
+		hash:      tx.Key(),
+		timestamp: time.Now().UTC(),
+		height:    height,
+	}
+	wtx.SetPeer(txInfo.SenderID)
+	txmp.initialTxCallback(wtx, rsp)
+	if cb != nil {
+		cb(&abci.Response{Value: &abci.Response_CheckTx{CheckTx: rsp}})
+	}
 	return nil
 }
 
@@ -304,10 +291,6 @@ func (txmp *TxMempool) Flush() {
 		cur = next
 	}
 	txmp.cache.Reset()
-
-	// Discard any pending recheck calls that may be in flight.  The calls will
-	// still complete, but will have no effect on the mempool.
-	atomic.StoreInt64(&txmp.txRecheck, 0)
 }
 
 // allEntriesSorted returns a slice of all the transactions currently in the
@@ -403,12 +386,6 @@ func (txmp *TxMempool) Update(
 	newPreFn mempool.PreCheckFunc,
 	newPostFn mempool.PostCheckFunc,
 ) error {
-	// TODO(creachadair): This would be a nice safety check but requires Go 1.18.
-	// // Safety check: The caller is required to hold the lock.
-	// if txmp.mtx.TryLock() {
-	// 	txmp.mtx.Unlock()
-	// 	panic("mempool: Update caller does not hold the lock")
-	// }
 	// Safety check: Transactions and responses must match in number.
 	if len(blockTxs) != len(deliverTxResponses) {
 		panic(fmt.Sprintf("mempool: got %d transactions but %d DeliverTx responses",
@@ -469,31 +446,22 @@ func (txmp *TxMempool) Update(
 // transactions are evicted.
 //
 // Finally, the new transaction is added and size stats updated.
-func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
-	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
-	if !ok {
-		txmp.logger.Error("mempool: received incorrect result type in CheckTx callback",
-			"expected", reflect.TypeOf(&abci.Response_CheckTx{}).Name(),
-			"got", reflect.TypeOf(res.Value).Name(),
-		)
-		return
-	}
-
+func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, checkTxRes *abci.ResponseCheckTx) {
 	txmp.mtx.Lock()
 	defer txmp.mtx.Unlock()
 
 	var err error
 	if txmp.postCheck != nil {
-		err = txmp.postCheck(wtx.tx, checkTxRes.CheckTx)
+		err = txmp.postCheck(wtx.tx, checkTxRes)
 	}
 
-	if err != nil || checkTxRes.CheckTx.Code != abci.CodeTypeOK {
+	if err != nil || checkTxRes.Code != abci.CodeTypeOK {
 		txmp.logger.Info(
 			"rejected bad transaction",
 			"priority", wtx.Priority(),
 			"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 			"peer_id", wtx.peers,
-			"code", checkTxRes.CheckTx.Code,
+			"code", checkTxRes.Code,
 			"post_check_err", err,
 		)
 
@@ -508,13 +476,13 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 		// If there was a post-check error, record its text in the result for
 		// debugging purposes.
 		if err != nil {
-			checkTxRes.CheckTx.MempoolError = err.Error()
+			checkTxRes.MempoolError = err.Error()
 		}
 		return
 	}
 
-	priority := checkTxRes.CheckTx.Priority
-	sender := checkTxRes.CheckTx.Sender
+	priority := checkTxRes.Priority
+	sender := checkTxRes.Sender
 
 	// Disallow multiple concurrent transactions from the same sender assigned
 	// by the ABCI application. As a special case, an empty sender is not
@@ -528,7 +496,7 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 				"tx", fmt.Sprintf("%X", w.tx.Hash()),
 				"sender", sender,
 			)
-			checkTxRes.CheckTx.MempoolError =
+			checkTxRes.MempoolError =
 				fmt.Sprintf("rejected valid incoming transaction; tx already exists for sender %q (%X)",
 					sender, w.tx.Hash())
 			txmp.metrics.RejectedTxs.Add(1)
@@ -563,7 +531,7 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 				"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 				"err", err.Error(),
 			)
-			checkTxRes.CheckTx.MempoolError =
+			checkTxRes.MempoolError =
 				fmt.Sprintf("rejected valid incoming transaction; mempool is full (%X)",
 					wtx.tx.Hash())
 			txmp.metrics.RejectedTxs.Add(1)
@@ -609,7 +577,7 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 		}
 	}
 
-	wtx.SetGasWanted(checkTxRes.CheckTx.GasWanted)
+	wtx.SetGasWanted(checkTxRes.GasWanted)
 	wtx.SetPriority(priority)
 	wtx.SetSender(sender)
 	txmp.insertTx(wtx)
@@ -642,27 +610,8 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 //
 // This callback is NOT executed for the initial CheckTx on a new transaction;
 // that case is handled by initialTxCallback instead.
-func (txmp *TxMempool) recheckTxCallback(req *abci.Request, res *abci.Response) {
-	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
-	if !ok {
-		// Don't log this; this is the default callback and other response types
-		// can safely be ignored.
-		return
-	}
-
-	// Check whether we are expecting recheck responses at this point.
-	// If not, we will ignore the response, this usually means the mempool was Flushed.
-	// If this is the "last" pending recheck, trigger a notification when it's been processed.
-	numLeft := atomic.AddInt64(&txmp.txRecheck, -1)
-	if numLeft == 0 {
-		defer txmp.notifyTxsAvailable() // notify waiters on return, if mempool is non-empty
-	} else if numLeft < 0 {
-		return
-	}
-
+func (txmp *TxMempool) recheckTxCallback(tx types.Tx, checkTxRes *abci.ResponseCheckTx) {
 	txmp.metrics.RecheckTimes.Add(1)
-	tx := types.Tx(req.GetCheckTx().Tx)
-
 	txmp.mtx.Lock()
 	defer txmp.mtx.Unlock()
 
@@ -678,11 +627,11 @@ func (txmp *TxMempool) recheckTxCallback(req *abci.Request, res *abci.Response) 
 	// If a postcheck hook is defined, call it before checking the result.
 	var err error
 	if txmp.postCheck != nil {
-		err = txmp.postCheck(tx, checkTxRes.CheckTx)
+		err = txmp.postCheck(tx, checkTxRes)
 	}
 
-	if checkTxRes.CheckTx.Code == abci.CodeTypeOK && err == nil {
-		wtx.SetPriority(checkTxRes.CheckTx.Priority)
+	if checkTxRes.Code == abci.CodeTypeOK && err == nil {
+		wtx.SetPriority(checkTxRes.Priority)
 		return // N.B. Size of mempool did not change
 	}
 
@@ -691,7 +640,7 @@ func (txmp *TxMempool) recheckTxCallback(req *abci.Request, res *abci.Response) 
 		"priority", wtx.Priority(),
 		"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 		"err", err,
-		"code", checkTxRes.CheckTx.Code,
+		"code", checkTxRes.Code,
 	)
 	txmp.removeTxByElement(elt)
 	txmp.metrics.FailedTxs.Add(1)
@@ -720,24 +669,43 @@ func (txmp *TxMempool) recheckTransactions() {
 	// even an "async" call invokes its callback immediately which will make the
 	// callback deadlock trying to acquire the same lock. This isn't a problem
 	// with out-of-process calls, but this has to work for both.
+	var rcwg sync.WaitGroup
+	rcwg.Add(txmp.txs.Len())
+
+	// Capture the current transactions to be rechecked.
+	wtxs := make([]*WrappedTx, 0, txmp.txs.Len())
+	for e := txmp.txs.Front(); e != nil; e = e.Next() {
+		wtxs = append(wtxs, e.Value.(*WrappedTx))
+	}
+	// When recheck is complete, trigger a notification for more transactions.
+	go func() {
+		rcwg.Wait()
+
+		txmp.mtx.Lock()
+		defer txmp.mtx.Unlock()
+		txmp.notifyTxsAvailable()
+	}()
+
 	txmp.mtx.Unlock()
 	defer txmp.mtx.Lock()
 
 	ctx := context.TODO()
-	atomic.StoreInt64(&txmp.txRecheck, int64(txmp.txs.Len()))
-	for e := txmp.txs.Front(); e != nil; e = e.Next() {
-		wtx := e.Value.(*WrappedTx)
+	for _, wtx := range wtxs {
+		wtx := wtx
 
-		// The response for this CheckTx is handled by the default recheckTxCallback.
-		_, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{
-			Tx:   wtx.tx,
-			Type: abci.CheckTxType_Recheck,
-		})
-		if err != nil {
-			txmp.logger.Error("failed to execute CheckTx during recheck",
-				"err", err, "hash", fmt.Sprintf("%x", wtx.tx.Hash()))
-			atomic.AddInt64(&txmp.txRecheck, -1)
-		}
+		go func() {
+			defer rcwg.Done()
+			// The response for this CheckTx is handled by the default recheckTxCallback.
+			rsp, err := txmp.proxyAppConn.CheckTxSync(ctx, abci.RequestCheckTx{
+				Tx:   wtx.tx,
+				Type: abci.CheckTxType_Recheck,
+			})
+			if err != nil {
+				txmp.logger.Error("failed to execute CheckTx during recheck",
+					"err", err, "hash", fmt.Sprintf("%x", wtx.tx.Hash()))
+			}
+			txmp.recheckTxCallback(wtx.tx, rsp)
+		}()
 	}
 
 	if _, err := txmp.proxyAppConn.FlushAsync(ctx); err != nil {
