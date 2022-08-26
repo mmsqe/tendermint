@@ -692,6 +692,22 @@ func (_m *Client) QuerySync(_a0 types.RequestQuery) (*types.ResponseQuery, error
 	return r0, r1
 }
 
+// Quit provides a mock function with given fields:
+func (_m *Client) Quit() <-chan struct{} {
+	ret := _m.Called()
+
+	var r0 <-chan struct{}
+	if rf, ok := ret.Get(0).(func() <-chan struct{}); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(<-chan struct{})
+		}
+	}
+
+	return r0
+}
+
 // Reset provides a mock function with given fields:
 func (_m *Client) Reset() error {
 	ret := _m.Called()
