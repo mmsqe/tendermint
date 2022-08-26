@@ -37,22 +37,22 @@ type ABCIEventer interface {
 type Item struct {
 	Cursor cursor.Cursor
 	Type   string
-	Data   types.EventData
+	Data   types.TMEventData
 	Events []abci.Event
 }
 
 // newItem constructs a new item with the specified cursor, type, and data.
-func newItem(cursor cursor.Cursor, etype string, data types.EventData) *Item {
+func newItem(cursor cursor.Cursor, etype string, data types.TMEventData) *Item {
 	return &Item{Cursor: cursor, Type: etype, Data: data, Events: makeEvents(etype, data)}
 }
 
 // makeEvents returns a slice of ABCI events comprising the type tag along with
 // any internal events exported by the data value.
-func makeEvents(etype string, data types.EventData) []abci.Event {
+func makeEvents(etype string, data types.TMEventData) []abci.Event {
 	base := []abci.Event{{
 		Type: tmTypeTag,
 		Attributes: []abci.EventAttribute{{
-			Key: tmTypeKey, Value: etype,
+			Key: []byte(tmTypeKey), Value: []byte(etype),
 		}},
 	}}
 	if evt, ok := data.(ABCIEventer); ok {
@@ -69,8 +69,8 @@ func FindType(events []abci.Event) (string, bool) {
 			continue
 		}
 		for _, attr := range evt.Attributes {
-			if attr.Key == tmTypeKey {
-				return attr.Value, true
+			if string(attr.Key) == tmTypeKey {
+				return string(attr.Value), true
 			}
 		}
 	}
