@@ -136,7 +136,7 @@ func (c *Local) Events(ctx context.Context, req *ctypes.RequestEvents) (*ctypes.
 	if err := after.UnmarshalText([]byte(req.After)); err != nil {
 		return nil, err
 	}
-	return core.Events(ctx, req.Filter, req.MaxItems, before, after, req.WaitTime)
+	return core.Events(c.ctx, req.Filter, req.MaxItems, before, after, req.WaitTime)
 }
 
 func (c *Local) Health(ctx context.Context) (*ctypes.ResultHealth, error) {

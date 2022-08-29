@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tendermint/tendermint/internal/eventlog/cursor"
+
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
@@ -363,11 +365,18 @@ func (c *baseRPCClient) ConsensusParams(
 
 func (c *baseRPCClient) Events(ctx context.Context, req *ctypes.RequestEvents) (*ctypes.ResultEvents, error) {
 	result := new(ctypes.ResultEvents)
+	var before, after cursor.Cursor
+	if err := before.UnmarshalText([]byte(req.Before)); err != nil {
+		return nil, err
+	}
+	if err := after.UnmarshalText([]byte(req.After)); err != nil {
+		return nil, err
+	}
 	if _, err := c.caller.Call(ctx, "events", map[string]interface{}{
 		"filter":    req.Filter,
 		"max_items": req.MaxItems,
-		"after":     req.After,
-		"before":    req.Before,
+		"after":     after,
+		"before":    before,
 		"wait_time": req.WaitTime,
 	}, result); err != nil {
 		return nil, err
