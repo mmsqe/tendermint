@@ -600,7 +600,7 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.Resul
 // UnsubscribeWS calls original client's Unsubscribe using remote address as a
 // subscriber.
 func (c *Client) UnsubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe, error) {
-	err := c.next.Unsubscribe(context.Background(), ctx.RemoteAddr(), query)
+	err := c.next.Unsubscribe(context.Background(), ctx.RemoteAddr(), query) //nolint:staticcheck
 	if err != nil {
 		return nil, err
 	}
@@ -610,7 +610,7 @@ func (c *Client) UnsubscribeWS(ctx *rpctypes.Context, query string) (*ctypes.Res
 // UnsubscribeAllWS calls original client's UnsubscribeAll using remote address
 // as a subscriber.
 func (c *Client) UnsubscribeAllWS(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
-	err := c.next.UnsubscribeAll(context.Background(), ctx.RemoteAddr())
+	err := c.next.UnsubscribeAll(context.Background(), ctx.RemoteAddr()) //nolint:staticcheck
 	if err != nil {
 		return nil, err
 	}
