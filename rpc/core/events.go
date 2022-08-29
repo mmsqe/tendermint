@@ -148,7 +148,7 @@ func UnsubscribeAll(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
 // If maxItems ≤ 0, a default positive number of events is chosen. The values
 // of maxItems and waitTime may be capped to sensible internal maxima without
 // reporting an error to the caller.
-func Events(ctx context.Context,
+func Events(ctx *rpctypes.Context,
 	filter *ctypes.EventFilter,
 	maxItems int,
 	before, after cursor.Cursor,
@@ -200,7 +200,7 @@ func Events(ctx context.Context,
 	}
 
 	if waitTime > 0 && before.IsZero() {
-		ctx, cancel := context.WithTimeout(ctx, waitTime)
+		ctx, cancel := context.WithTimeout(ctx.Context(), waitTime)
 		defer cancel()
 
 		// Long poll. The loop here is because new items may not match the query,
