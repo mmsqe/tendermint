@@ -305,10 +305,7 @@ type EventItem struct {
 	// The encoded event data for this item. The content is a JSON object with
 	// the following structure:
 	//
-	//   {
-	//      "type":  "type-tag",
-	//      "value": <json-encoded-value>
-	//   }
+	//   <json-encoded-value>
 	//
 	// The known type tags are defined by the tendermint/types package.
 	Data json.RawMessage `json:"data"`
