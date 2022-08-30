@@ -44,10 +44,9 @@ func TestHeaderEvents(t *testing.T) {
 			ectx, cancel := context.WithTimeout(ctx, waitForEventTimeout)
 			defer cancel()
 			query := types.QueryForEvent(types.EventNewBlockHeader).String()
-			evt, err := client.WaitForOneEvent(ectx, c, query)
+			var evt types.EventDataNewBlockHeader
+			err := client.WaitForOneEvent(ectx, c, query, &evt)
 			require.Nil(t, err, "%d: %+v", i, err)
-			_, ok := evt.(types.EventDataNewBlockHeader)
-			require.True(t, ok, "%d: %#v", i, evt)
 			// TODO: more checks...
 		})
 	}
@@ -144,16 +143,13 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 
 			// Wait for the transaction we sent to be confirmed.
 			query := fmt.Sprintf(`tm.event = '%s' AND tx.hash = '%X'`, types.EventTx, types.Tx(tx).Hash())
-			evt, err := client.WaitForOneEvent(ctx, c, query)
+			var evt types.EventDataTx
+			err := client.WaitForOneEvent(ctx, c, query, &evt)
 			require.Nil(t, err)
 
-			// and make sure it has the proper info
-			txe, ok := evt.(types.EventDataTx)
-			require.True(t, ok)
-
 			// make sure this is the proper tx
-			require.EqualValues(t, tx, txe.Tx)
-			require.True(t, txe.Result.IsOK())
+			require.EqualValues(t, tx, evt.Tx)
+			require.True(t, evt.Result.IsOK())
 		})
 	}
 }
