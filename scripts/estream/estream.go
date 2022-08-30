@@ -14,7 +14,7 @@ import (
 
 	"github.com/tendermint/tendermint/rpc/client/eventstream"
 	rpcclient "github.com/tendermint/tendermint/rpc/client/http"
-	"github.com/tendermint/tendermint/rpc/coretypes"
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
 var (
@@ -48,7 +48,7 @@ Options:
 func main() {
 	flag.Parse()
 
-	cli, err := rpcclient.New(*rpcAddr)
+	cli, err := rpcclient.New(*rpcAddr, "/websocket")
 	if err != nil {
 		log.Fatalf("RPC client: %v", err)
 	}
