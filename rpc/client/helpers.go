@@ -56,7 +56,7 @@ func WaitForHeight(c StatusClient, h int64, waiter Waiter) error {
 // WaitForOneEvent waits for the first event matching the given query on c, or
 // until ctx ends. It reports an error if ctx ends before a matching event is
 // received.
-func WaitForOneEvent(ctx context.Context, c EventsClient, query string) (types.TMEventData, error) {
+func WaitForOneEvent(ctx context.Context, c EventsClient, query string, evt types.TMEventData) error {
 	for {
 		rsp, err := c.Events(ctx, &coretypes.RequestEvents{
 			Filter:   &coretypes.EventFilter{Query: query},
@@ -64,14 +64,13 @@ func WaitForOneEvent(ctx context.Context, c EventsClient, query string) (types.T
 			WaitTime: 10 * time.Second, // duration doesn't matter, limited by ctx timeout
 		})
 		if err != nil {
-			return nil, err
+			return err
 		} else if len(rsp.Items) == 0 {
 			continue // continue polling until ctx expires
 		}
-		var result types.TMEventData
-		if err := json.Unmarshal(rsp.Items[0].Data, &result); err != nil {
-			return nil, err
+		if err := json.Unmarshal(rsp.Items[0].Data, evt); err != nil {
+			return err
 		}
-		return result, nil
+		return nil
 	}
 }
