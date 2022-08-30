@@ -1099,6 +1099,7 @@ func (n *Node) ConfigureRPC() error {
 		BlockIndexer:     n.blockIndexer,
 		ConsensusReactor: n.consensusReactor,
 		EventBus:         n.eventBus,
+		EventLog:         n.eventLog,
 		Mempool:          n.mempool,
 
 		Logger: n.Logger.With("module", "rpc"),
