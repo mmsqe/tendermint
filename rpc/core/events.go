@@ -154,6 +154,15 @@ func Events(ctx *rpctypes.Context,
 	before, after cursor.Cursor,
 	waitTime time.Duration,
 ) (*ctypes.ResultEvents, error) {
+	return EventsWithContext(ctx.Context(), filter, maxItems, before, after, waitTime)
+}
+
+func EventsWithContext(ctx context.Context,
+	filter *ctypes.EventFilter,
+	maxItems int,
+	before, after cursor.Cursor,
+	waitTime time.Duration,
+) (*ctypes.ResultEvents, error) {
 	if env.EventLog == nil {
 		return nil, errors.New("the event log is not enabled")
 	}
@@ -200,7 +209,7 @@ func Events(ctx *rpctypes.Context,
 	}
 
 	if waitTime > 0 && before.IsZero() {
-		ctx, cancel := context.WithTimeout(ctx.Context(), waitTime)
+		ctx, cancel := context.WithTimeout(ctx, waitTime)
 		defer cancel()
 
 		// Long poll. The loop here is because new items may not match the query,
