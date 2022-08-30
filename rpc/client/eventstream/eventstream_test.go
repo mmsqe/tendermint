@@ -12,9 +12,9 @@ import (
 
 	"github.com/tendermint/tendermint/internal/eventlog"
 	"github.com/tendermint/tendermint/internal/eventlog/cursor"
-	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/rpc/client/eventstream"
-	"github.com/tendermint/tendermint/rpc/coretypes"
+	rpccore "github.com/tendermint/tendermint/rpc/core"
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -102,7 +102,7 @@ type testItem struct {
 func makeTestItem(cur, data string) testItem {
 	return testItem{
 		Cursor: cur,
-		Data:   fmt.Sprintf(`{"type":%q,"value":%q}`, types.EventDataString("").TypeTag(), data),
+		Data:   fmt.Sprintf(`%q`, data),
 	}
 }
 
@@ -136,6 +136,7 @@ func newStreamTester(t *testing.T, query string, logOpts eventlog.LogSettings, s
 	s.log = lg
 	s.env = &rpccore.Environment{EventLog: lg}
 	s.stream = eventstream.New(s, query, streamOpts)
+	rpccore.SetEnvironment(s.env)
 	return s
 }
 
@@ -221,5 +222,5 @@ func (s *streamTester) Events(ctx context.Context, req *coretypes.RequestEvents)
 	if err := after.UnmarshalText([]byte(req.After)); err != nil {
 		return nil, err
 	}
-	return s.env.Events(ctx, req.Filter, req.MaxItems, before, after, req.WaitTime)
+	return rpccore.EventsWithContext(ctx, req.Filter, req.MaxItems, before, after, req.WaitTime)
 }
