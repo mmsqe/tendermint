@@ -357,6 +357,16 @@ func TestExpandEvents(t *testing.T) {
 	}
 }
 
+func TestFlattenEvents(t *testing.T) {
+	bz, err := json.Marshal(query.FlattenEvents(apiTypeEvents))
+	require.NoError(t, err)
+	bz2, err := json.Marshal(apiEvents)
+	require.NoError(t, err)
+	if string(bz) != string(bz2) {
+		t.Errorf("got %s, want %v", string(bz), string(bz2))
+	}
+}
+
 func TestAllMatchesAll(t *testing.T) {
 	events := newTestEvents(
 		``,
