@@ -121,7 +121,9 @@ type streamTester struct {
 	stop   func()
 }
 
-func newStreamTester(t *testing.T, query string, logOpts eventlog.LogSettings, streamOpts *eventstream.StreamOptions) *streamTester {
+func newStreamTester(
+	t *testing.T, query string, logOpts eventlog.LogSettings, streamOpts *eventstream.StreamOptions,
+) *streamTester {
 	t.Helper()
 	s := new(streamTester)
 
