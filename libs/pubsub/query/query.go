@@ -68,7 +68,7 @@ func Compile(ast syntax.Query) (*Query, error) {
 }
 
 func ExpandEvents(flattenedEvents map[string][]string) []types.Event {
-	events := make([]types.Event, len(flattenedEvents))
+	events := make([]types.Event, 0)
 
 	for composite, values := range flattenedEvents {
 		tokens := strings.Split(composite, ".")
