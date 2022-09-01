@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tendermint/tendermint/internal/eventlog/cursor"
-
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
@@ -41,24 +39,24 @@ the example for more details.
 
 Example:
 
-		c, err := New("http://192.168.1.10:26657", "/websocket")
-		if err != nil {
-			// handle error
-		}
+	c, err := New("http://192.168.1.10:26657", "/websocket")
+	if err != nil {
+		// handle error
+	}
 
-		// call Start/Stop if you're subscribing to events
-		err = c.Start()
-		if err != nil {
-			// handle error
-		}
-		defer c.Stop()
+	// call Start/Stop if you're subscribing to events
+	err = c.Start()
+	if err != nil {
+		// handle error
+	}
+	defer c.Stop()
 
-		res, err := c.Status()
-		if err != nil {
-			// handle error
-		}
+	res, err := c.Status()
+	if err != nil {
+		// handle error
+	}
 
-		// handle result
+	// handle result
 */
 type HTTP struct {
 	remote string
@@ -365,19 +363,12 @@ func (c *baseRPCClient) ConsensusParams(
 
 func (c *baseRPCClient) Events(ctx context.Context, req *ctypes.RequestEvents) (*ctypes.ResultEvents, error) {
 	result := new(ctypes.ResultEvents)
-	var before, after cursor.Cursor
-	if err := before.UnmarshalText([]byte(req.Before)); err != nil {
-		return nil, err
-	}
-	if err := after.UnmarshalText([]byte(req.After)); err != nil {
-		return nil, err
-	}
 	if _, err := c.caller.Call(ctx, "events", map[string]interface{}{
-		"filter":    req.Filter,
-		"max_items": req.MaxItems,
-		"after":     after,
-		"before":    before,
-		"wait_time": req.WaitTime,
+		"filter":   req.Filter.Query,
+		"maxItems": req.MaxItems,
+		"after":    req.After,
+		"before":   req.Before,
+		"waitTime": req.WaitTime,
 	}, result); err != nil {
 		return nil, err
 	}
