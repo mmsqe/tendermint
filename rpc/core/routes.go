@@ -10,7 +10,7 @@ import (
 var Routes = map[string]*rpc.RPCFunc{
 	// Event subscription. Note that subscribe, unsubscribe, and
 	// unsubscribe_all are only available via the websocket endpoint.
-	"events":          rpc.NewRPCFunc(Events, "filter,maxItems,before,after,waitTime"),
+	"events":          rpc.NewRPCFunc(Events, "filter,before,after,maxItems,waitTime"),
 	"subscribe":       rpc.NewWSRPCFunc(Subscribe, "query"),
 	"unsubscribe":     rpc.NewWSRPCFunc(Unsubscribe, "query"),
 	"unsubscribe_all": rpc.NewWSRPCFunc(UnsubscribeAll, ""),

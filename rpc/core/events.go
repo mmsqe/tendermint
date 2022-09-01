@@ -149,12 +149,20 @@ func UnsubscribeAll(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
 // of maxItems and waitTime may be capped to sensible internal maxima without
 // reporting an error to the caller.
 func Events(ctx *rpctypes.Context,
-	filter *ctypes.EventFilter,
+	filter, before, after string,
 	maxItems int,
-	before, after cursor.Cursor,
 	waitTime time.Duration,
 ) (*ctypes.ResultEvents, error) {
-	return EventsWithContext(ctx.Context(), filter, maxItems, before, after, waitTime)
+	var curBefore, curAfter cursor.Cursor
+	if err := curBefore.UnmarshalText([]byte(before)); err != nil {
+		return nil, err
+	}
+	if err := curAfter.UnmarshalText([]byte(after)); err != nil {
+		return nil, err
+	}
+	return EventsWithContext(ctx.Context(), &ctypes.EventFilter{
+		Query: filter,
+	}, maxItems, curBefore, curAfter, waitTime)
 }
 
 func EventsWithContext(ctx context.Context,
@@ -163,6 +171,7 @@ func EventsWithContext(ctx context.Context,
 	before, after cursor.Cursor,
 	waitTime time.Duration,
 ) (*ctypes.ResultEvents, error) {
+	fmt.Printf("adr-events: %+v, %+v, %+v, %+v, %+v\n", filter, maxItems, before, after, waitTime)
 	if env.EventLog == nil {
 		return nil, errors.New("the event log is not enabled")
 	}
