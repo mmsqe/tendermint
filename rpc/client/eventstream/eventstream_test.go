@@ -109,7 +109,13 @@ func TestMinPollTime(t *testing.T) {
 		start := time.Now()
 
 		// Request a very short delay, and affirm we got the server's minimum.
-		rsp, err := s.env.Events(ctx, filter, 1, zero, zero, 10*time.Millisecond)
+		rsp, err := s.Events(ctx, &coretypes.RequestEvents{
+			Filter:   filter,
+			MaxItems: 1,
+			After:    zero.String(),
+			Before:   zero.String(),
+			WaitTime: 10 * time.Millisecond,
+		})
 		if err != nil {
 			t.Fatalf("Events failed: %v", err)
 		} else if elapsed := time.Since(start); elapsed < time.Second {
@@ -128,7 +134,13 @@ func TestMinPollTime(t *testing.T) {
 		// Request a long-ish delay and affirm we don't block for it.
 		// Check for this by ensuring we return sooner than the minimum delay,
 		// since we don't know the exact timing.
-		rsp, err := s.env.Events(ctx, filter, 1, zero, zero, 10*time.Second)
+		rsp, err := s.Events(ctx, &coretypes.RequestEvents{
+			Filter:   filter,
+			MaxItems: 1,
+			After:    zero.String(),
+			Before:   zero.String(),
+			WaitTime: 10 * time.Second,
+		})
 		if err != nil {
 			t.Fatalf("Events failed: %v", err)
 		} else if elapsed := time.Since(start); elapsed > 500*time.Millisecond {
