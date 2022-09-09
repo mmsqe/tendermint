@@ -16,7 +16,7 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 	return map[string]*rpcserver.RPCFunc{
 		// Event subscription. Note that subscribe, unsubscribe, and
 		// unsubscribe_all are only available via the websocket endpoint.
-		"events":          rpcserver.NewRPCFunc(makeEventsSearchFunc(c), "filter,before,after,maxItems,waitTime"),
+		"events":          rpcserver.NewRPCFunc(makeEventsSearchFunc(c), "filter,before,after,maxItems,waitTime,isLatest"),
 		"subscribe":       rpcserver.NewWSRPCFunc(c.SubscribeWS, "query"),
 		"unsubscribe":     rpcserver.NewWSRPCFunc(c.UnsubscribeWS, "query"),
 		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.UnsubscribeAllWS, ""),
@@ -294,6 +294,7 @@ type rpcEventsSearchFunc func(
 	filter, before, after string,
 	maxItems int,
 	waitTime time.Duration,
+	isLatest bool,
 ) (*ctypes.ResultEvents, error)
 
 func makeEventsSearchFunc(c *lrpc.Client) rpcEventsSearchFunc {
@@ -302,6 +303,7 @@ func makeEventsSearchFunc(c *lrpc.Client) rpcEventsSearchFunc {
 		filter, before, after string,
 		maxItems int,
 		waitTime time.Duration,
+		isLatest bool,
 	) (*ctypes.ResultEvents, error) {
 		return c.Events(ctx.Context(), &ctypes.RequestEvents{
 			Filter: &ctypes.EventFilter{
@@ -311,6 +313,7 @@ func makeEventsSearchFunc(c *lrpc.Client) rpcEventsSearchFunc {
 			WaitTime: waitTime,
 			Before:   before,
 			After:    after,
+			IsLatest: isLatest,
 		})
 	}
 }
