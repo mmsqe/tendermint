@@ -153,6 +153,7 @@ func Events(ctx *rpctypes.Context,
 	maxItems int,
 	before, after string,
 	waitTime time.Duration,
+	isLatest bool,
 ) (*ctypes.ResultEvents, error) {
 	var curBefore, curAfter cursor.Cursor
 	if err := curBefore.UnmarshalText([]byte(before)); err != nil {
@@ -163,7 +164,7 @@ func Events(ctx *rpctypes.Context,
 	}
 	return EventsWithContext(ctx.Context(), &ctypes.EventFilter{
 		Query: filter,
-	}, maxItems, curBefore, curAfter, waitTime)
+	}, maxItems, curBefore, curAfter, waitTime, isLatest)
 }
 
 func EventsWithContext(ctx context.Context,
@@ -171,6 +172,7 @@ func EventsWithContext(ctx context.Context,
 	maxItems int,
 	before, after cursor.Cursor,
 	waitTime time.Duration,
+	isLatest bool,
 ) (*ctypes.ResultEvents, error) {
 	if env.EventLog == nil {
 		return nil, errors.New("the event log is not enabled")
@@ -198,6 +200,10 @@ func EventsWithContext(ctx context.Context,
 			return nil, fmt.Errorf("invalid filter query: %w", err)
 		}
 		query = q
+	}
+
+	if isLatest && after.IsZero() {
+		after = env.EventLog.Info().Newest
 	}
 
 	var info eventlog.Info
