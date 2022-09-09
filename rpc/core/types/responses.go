@@ -267,6 +267,8 @@ type RequestEvents struct {
 	// after the head of the event log.
 	Before string `json:"before"`
 
+	IsLatest bool `json:"isLatest"`
+
 	// Wait for up to this long for events to be available.
 	WaitTime time.Duration `json:"waitTime"`
 }

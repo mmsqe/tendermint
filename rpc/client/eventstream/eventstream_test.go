@@ -283,5 +283,5 @@ func (s *streamTester) Events(ctx context.Context, req *coretypes.RequestEvents)
 	if err := after.UnmarshalText([]byte(req.After)); err != nil {
 		return nil, err
 	}
-	return rpccore.EventsWithContext(ctx, req.Filter, req.MaxItems, before, after, req.WaitTime)
+	return rpccore.EventsWithContext(ctx, req.Filter, req.MaxItems, before, after, req.WaitTime, false)
 }

@@ -369,6 +369,7 @@ func (c *baseRPCClient) Events(ctx context.Context, req *ctypes.RequestEvents) (
 		"before":   req.Before,
 		"after":    req.After,
 		"waitTime": req.WaitTime,
+		"isLatest": req.IsLatest,
 	}, result); err != nil {
 		return nil, err
 	}
