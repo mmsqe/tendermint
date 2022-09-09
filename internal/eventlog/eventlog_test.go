@@ -144,14 +144,13 @@ func TestConcurrent(t *testing.T) {
 				case <-tick.C:
 					tick.Reset(time.Duration(rand.Intn(150)) * time.Millisecond)
 				}
-
 				// Wait for new data to arrive.
 				info, err := lg.WaitScan(ctx, cur, func(itm *eventlog.Item) error {
 					if itm.Cursor == cur {
 						return eventlog.ErrStopScan
 					}
 					return nil
-				})
+				}, false)
 				if err != nil {
 					if !errors.Is(err, context.Canceled) {
 						t.Errorf("Wait scan for task %d failed: %v", task, err)

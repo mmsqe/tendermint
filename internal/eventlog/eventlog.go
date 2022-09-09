@@ -93,13 +93,16 @@ func (lg *Log) Scan(f func(*Item) error) (Info, error) {
 // head is updated, WaitScan returns an error without calling f.
 //
 // The Info value returned is valid even if WaitScan reports an error.
-func (lg *Log) WaitScan(ctx context.Context, c cursor.Cursor, f func(*Item) error) (Info, error) {
+func (lg *Log) WaitScan(ctx context.Context, c cursor.Cursor, f func(*Item) error, wait bool) (Info, error) {
 	st := lg.state()
-	for st.head == nil || st.head.item.Cursor == c {
+	for st.head == nil || st.head.item.Cursor == c || wait {
 		var err error
 		st, err = lg.waitStateChange(ctx)
 		if err != nil {
 			return st.info(), err
+		}
+		if wait {
+			break
 		}
 	}
 	return lg.scanState(st, f)
