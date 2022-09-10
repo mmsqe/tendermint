@@ -202,6 +202,10 @@ func EventsWithContext(ctx context.Context,
 		query = q
 	}
 
+	if isLatest && after.IsZero() {
+		after = env.EventLog.Info().Newest
+	}
+
 	var info eventlog.Info
 	var items []*eventlog.Item
 	var err error
@@ -230,7 +234,7 @@ func EventsWithContext(ctx context.Context,
 		// and we want to keep waiting until we have relevant results (or time out).
 		cur := after
 		for len(items) == 0 {
-			info, err = env.EventLog.WaitScan(ctx, cur, accept, isLatest)
+			info, err = env.EventLog.WaitScan(ctx, cur, accept)
 			if err != nil {
 				// Don't report a timeout as a request failure.
 				if errors.Is(err, context.DeadlineExceeded) {
