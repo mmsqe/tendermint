@@ -150,7 +150,7 @@ func TestConcurrent(t *testing.T) {
 						return eventlog.ErrStopScan
 					}
 					return nil
-				}, false)
+				})
 				if err != nil {
 					if !errors.Is(err, context.Canceled) {
 						t.Errorf("Wait scan for task %d failed: %v", task, err)
@@ -167,58 +167,80 @@ func TestConcurrent(t *testing.T) {
 }
 
 func TestWaitScan(t *testing.T) {
-	lg, err := eventlog.New(eventlog.LogSettings{
-		WindowSize: 30 * time.Second,
-	})
-	if err != nil {
-		t.Fatalf("New unexpectedly failed: %v", err)
+	testCases := []struct {
+		name     string
+		isLatest bool
+		counter  int
+	}{
+		{
+			"scan latest",
+			true,
+			1,
+		},
+		{
+			"scan earliest",
+			false,
+			2,
+		},
 	}
-
-	mustAdd(t, lg, "test-event", eventData("1"))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	cur := cursor.Cursor{}
-	counter := 0
-	info, err := lg.WaitScan(ctx, cur, func(itm *eventlog.Item) error {
-		counter++
-		return eventlog.ErrStopScan
-	}, false)
-	if err != nil {
-		t.Errorf("WaitScan err: %v", err)
-	}
-	if info.Size != 1 {
-		t.Errorf("WaitScan not latest: log size is %d, want %d", info.Size, 1)
-	}
-	if counter != 1 {
-		t.Errorf("WaitScan not latest: item count is %d, want %d", counter, 1)
-	}
-
-	counter = 0
-	wg := new(sync.WaitGroup)
-	wg.Add(1)
-	go func() {
-		info, err = lg.WaitScan(ctx, cur, func(itm *eventlog.Item) error {
-			if (itm.Data).(eventData) != "1" {
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lg, err := eventlog.New(eventlog.LogSettings{
+				WindowSize: 30 * time.Second,
+			})
+			if err != nil {
+				t.Fatalf("New unexpectedly failed: %v", err)
+			}
+			mustAdd(t, lg, "test-event", eventData("1"))
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			counter := 0
+			info, err := lg.WaitScan(ctx, cursor.Cursor{}, func(itm *eventlog.Item) error {
 				counter++
 				return eventlog.ErrStopScan
+			})
+			if err != nil {
+				t.Errorf("WaitScan err: %v", err)
 			}
-			return nil
-		}, true)
-		wg.Done()
-	}()
-	time.AfterFunc(time.Second, func() {
-		mustAdd(t, lg, "test-event", eventData("2"))
-	})
-	wg.Wait()
+			if info.Size != 1 {
+				t.Errorf("WaitScan not latest: log size is %d, want %d", info.Size, 1)
+			}
+			if counter != 1 {
+				t.Errorf("WaitScan not latest: item count is %d, want %d", counter, 1)
+			}
 
-	if err != nil {
-		t.Errorf("WaitScan err: %v", err)
-	}
-	if info.Size != 2 {
-		t.Errorf("WaitScan latest: log size is %d, want %d", info.Size, 2)
-	}
-	if counter != 1 {
-		t.Errorf("WaitScan latest: item count is %d, want %d", counter, 1)
+			counter = 0
+			wg := new(sync.WaitGroup)
+			wg.Add(1)
+			go func() {
+				tCursor := lg.Info().Newest
+				if tc.isLatest {
+					tCursor = lg.Info().Oldest
+				}
+				info, err = lg.WaitScan(ctx, tCursor, func(itm *eventlog.Item) error {
+					if (itm.Data).(eventData) == "2" {
+						counter++
+						return eventlog.ErrStopScan
+					}
+					return nil
+				})
+				wg.Done()
+			}()
+			time.AfterFunc(time.Second, func() {
+				mustAdd(t, lg, "test-event", eventData("2"))
+			})
+			wg.Wait()
+
+			if err != nil {
+				t.Errorf("WaitScan err: %v", err)
+			}
+			if info.Size != 2 {
+				t.Errorf("WaitScan latest: log size is %d, want %d", info.Size, 2)
+			}
+			if counter != 1 {
+				t.Errorf("WaitScan latest: item count is %d, want %d", counter, tc.counter)
+			}
+		})
 	}
 }
 
