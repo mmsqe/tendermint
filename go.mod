@@ -22,7 +22,7 @@ require (
 	github.com/google/orderedcode v0.0.1
 	github.com/gorilla/websocket v1.5.0
 	github.com/gtank/merlin v0.1.1
-	github.com/lib/pq v1.10.6
+	github.com/lib/pq v1.10.7
 	github.com/libp2p/go-buffer-pool v0.1.0
 	github.com/minio/highwayhash v1.0.2
 	github.com/ory/dockertest v3.3.5+incompatible
@@ -49,6 +49,8 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
 	github.com/vektra/mockery/v2 v2.14.0
 )
+
+require github.com/google/go-cmp v0.5.8
 
 require (
 	4d63.com/gochecknoglobals v0.1.0 // indirect
@@ -120,7 +122,6 @@ require (
 	github.com/golangci/revgrep v0.0.0-20220804021717-745bb2f7c2e6 // indirect
 	github.com/golangci/unconvert v0.0.0-20180507085042-28b1c447d1f4 // indirect
 	github.com/google/btree v1.0.0 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/gordonklaus/ineffassign v0.0.0-20210914165742-4cc7213b9bc8 // indirect
 	github.com/gostaticanalysis/analysisutil v0.7.1 // indirect
 	github.com/gostaticanalysis/comment v1.4.2 // indirect
