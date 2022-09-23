@@ -4,12 +4,11 @@
 // Query expressions describe properties of events and their attributes, using
 // strings like:
 //
-//    abci.invoice.number = 22 AND abci.invoice.owner = 'Ivan'
+//	abci.invoice.number = 22 AND abci.invoice.owner = 'Ivan'
 //
 // Query expressions can handle attribute values encoding numbers, strings,
 // dates, and timestamps.  The complete query grammar is described in the
 // query/syntax package.
-//
 package query
 
 import (
@@ -90,17 +89,6 @@ func ExpandEvents(flattenedEvents map[string][]string) []types.Event {
 	return events
 }
 
-func FlattenEvents(events []types.Event) map[string][]string {
-	flattenedEvents := make(map[string][]string)
-	for _, event := range events {
-		for _, attr := range event.Attributes {
-			key := event.Type + "." + string(attr.Key)
-			flattenedEvents[key] = append(flattenedEvents[key], string(attr.Value))
-		}
-	}
-	return flattenedEvents
-}
-
 // Matches satisfies part of the pubsub.Query interface.  This implementation
 // never reports an error. A nil *Query matches all events.
 func (q *Query) Matches(events map[string][]string) (bool, error) {
@@ -108,6 +96,13 @@ func (q *Query) Matches(events map[string][]string) (bool, error) {
 		return true, nil
 	}
 	return q.matchesEvents(ExpandEvents(events)), nil
+}
+
+func (q *Query) MatchesEvents(events []types.Event) (bool, error) {
+	if q == nil {
+		return true, nil
+	}
+	return q.matchesEvents(events), nil
 }
 
 // String matches part of the pubsub.Query interface.
@@ -246,6 +241,7 @@ func parseNumber(s string) (float64, error) {
 // An entry does not exist if the combination is not valid.
 //
 // Disable the dupl lint for this map. The result isn't even correct.
+//
 //nolint:dupl
 var opTypeMap = map[syntax.Token]map[syntax.Token]func(interface{}) func(string) bool{
 	syntax.TContains: {

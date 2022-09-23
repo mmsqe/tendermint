@@ -215,8 +215,7 @@ func EventsWithContext(ctx context.Context,
 		if len(items) > maxItems || itm.Cursor.Before(after) {
 			return eventlog.ErrStopScan
 		}
-		flattenedEvents := tmquery.FlattenEvents(itm.Events)
-		match, err := query.Matches(flattenedEvents)
+		match, err := query.MatchesEvents(itm.Events)
 		if err != nil {
 			return fmt.Errorf("matches failed: %v", err)
 		}

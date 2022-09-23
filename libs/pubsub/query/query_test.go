@@ -18,14 +18,14 @@ import (
 var _ pubsub.Query = (*query.Query)(nil)
 
 // Example events from the OpenAPI documentation:
-//  https://github.com/tendermint/tendermint/blob/master/rpc/openapi/openapi.yaml
+//
+//	https://github.com/tendermint/tendermint/blob/master/rpc/openapi/openapi.yaml
 //
 // Redactions:
 //
 //   - Add an explicit "tm" event for the built-in attributes.
 //   - Remove Index fields (not relevant to tests).
 //   - Add explicit balance values (to use in tests).
-//
 var apiEvents = map[string][]string{
 	"tm.event": {
 		"Tx",
@@ -332,6 +332,16 @@ func TestCompiledMatches(t *testing.T) {
 				t.Errorf("Query: %#q\nInput: %+v\nMatches: got %v, want %v",
 					tc.s, tc.events, got, tc.matches)
 			}
+
+			got, err = c.MatchesEvents(query.ExpandEvents(tc.events))
+			if err != nil {
+				t.Errorf("Query: %#q\nInput: %+v\nMatches: got error %v",
+					tc.s, tc.events, err)
+			}
+			if got != tc.matches {
+				t.Errorf("Query: %#q\nInput: %+v\nMatches: got %v, want %v",
+					tc.s, tc.events, got, tc.matches)
+			}
 		})
 	}
 }
@@ -351,16 +361,6 @@ func TestExpandEvents(t *testing.T) {
 	bz, err := json.Marshal(sortEvents(expanded))
 	require.NoError(t, err)
 	bz2, err := json.Marshal(sortEvents(apiTypeEvents))
-	require.NoError(t, err)
-	if string(bz) != string(bz2) {
-		t.Errorf("got %s, want %v", string(bz), string(bz2))
-	}
-}
-
-func TestFlattenEvents(t *testing.T) {
-	bz, err := json.Marshal(query.FlattenEvents(apiTypeEvents))
-	require.NoError(t, err)
-	bz2, err := json.Marshal(apiEvents)
 	require.NoError(t, err)
 	if string(bz) != string(bz2) {
 		t.Errorf("got %s, want %v", string(bz), string(bz2))
