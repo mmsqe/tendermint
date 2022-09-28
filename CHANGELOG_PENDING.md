@@ -5,6 +5,7 @@
 ### BREAKING CHANGES
 
 - CLI/RPC/Config
+  - [config] \#9491 Add new event subscription options and defaults. (@creachadair)
 
 - Apps
 
