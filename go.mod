@@ -34,7 +34,7 @@ require (
 	github.com/tendermint/tm-db v0.6.6
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/net v0.0.0-20220812174116-3211cb980234
-	google.golang.org/grpc v1.49.0
+	google.golang.org/grpc v1.51.0
 )
 
 require (
@@ -256,7 +256,7 @@ require (
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde // indirect
 	golang.org/x/sys v0.0.0-20220818161305-2296e01440c6 // indirect
 	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035 // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/text v0.4.0 // indirect
 	golang.org/x/tools v0.1.12 // indirect
 	google.golang.org/genproto v0.0.0-20220725144611-272f38e5d71b // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
