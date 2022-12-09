@@ -72,8 +72,8 @@ func ExpandEvents(flattenedEvents map[string][]string) []types.Event {
 		attrs := make([]types.EventAttribute, len(values))
 		for i, v := range values {
 			attrs[i] = types.EventAttribute{
-				Key:   tokens[len(tokens)-1],
-				Value: v,
+				Key:   []byte(tokens[len(tokens)-1]),
+				Value: []byte(v),
 			}
 		}
 
@@ -147,9 +147,9 @@ func (c condition) findAttr(event types.Event) ([]string, bool) {
 	}
 	var vals []string
 	for _, attr := range event.Attributes {
-		fullName := event.Type + "." + attr.Key
+		fullName := event.Type + "." + string(attr.Key)
 		if fullName == c.tag {
-			vals = append(vals, attr.Value)
+			vals = append(vals, string(attr.Value))
 		}
 	}
 	return vals, false

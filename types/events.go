@@ -210,7 +210,7 @@ func eventWithAttr(etype, value string) abci.Event {
 	return abci.Event{
 		Type: parts[0],
 		Attributes: []abci.EventAttribute{{
-			Key: parts[1], Value: value,
+			Key: []byte(parts[1]), Value: []byte(value),
 		}},
 	}
 }
