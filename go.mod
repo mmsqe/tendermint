@@ -14,7 +14,7 @@ require (
 	github.com/golangci/golangci-lint v1.50.1
 	github.com/google/orderedcode v0.0.1
 	github.com/gorilla/websocket v1.5.0
-	github.com/informalsystems/tm-load-test v1.0.0
+	github.com/informalsystems/tm-load-test v1.3.0
 	github.com/lib/pq v1.10.7
 	github.com/libp2p/go-buffer-pool v0.1.0
 	github.com/minio/highwayhash v1.0.2
@@ -32,8 +32,8 @@ require (
 	github.com/spf13/viper v1.14.0
 	github.com/stretchr/testify v1.8.1
 	github.com/tendermint/tm-db v0.6.6
-	golang.org/x/crypto v0.3.0
-	golang.org/x/net v0.2.0
+	golang.org/x/crypto v0.5.0
+	golang.org/x/net v0.5.0
 	google.golang.org/grpc v1.51.0
 )
 
@@ -51,6 +51,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20220708102147-0a8a51822cae
 	github.com/vektra/mockery/v2 v2.15.0
+	golang.org/x/sync v0.1.0
 	gonum.org/v1/gonum v0.12.0
 	google.golang.org/protobuf v1.28.2-0.20220831092852-f930b1dc76e8
 )
@@ -104,6 +105,9 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/esimonov/ifshort v1.0.4 // indirect
 	github.com/ettle/strcase v0.1.1 // indirect
+	github.com/facebookgo/ensure v0.0.0-20200202191622-63f1cf65ac4c // indirect
+	github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 // indirect
+	github.com/facebookgo/subset v0.0.0-20200203212716-c811ad88dec4 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/firefart/nonamedreturns v1.0.4 // indirect
@@ -142,6 +146,7 @@ require (
 	github.com/gostaticanalysis/comment v1.4.2 // indirect
 	github.com/gostaticanalysis/forcetypeassert v0.1.0 // indirect
 	github.com/gostaticanalysis/nilerr v0.1.1 // indirect
+	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -255,15 +260,15 @@ require (
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
 	golang.org/x/exp/typeparams v0.0.0-20220827204233-334a2380cb91 // indirect
 	golang.org/x/mod v0.6.0 // indirect
-	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.2.0 // indirect
-	golang.org/x/term v0.2.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/term v0.4.0 // indirect
+	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/genproto v0.0.0-20221024183307-1bc688fe9f3e // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gotest.tools v2.2.0+incompatible // indirect
 	honnef.co/go/tools v0.3.3 // indirect
 	mvdan.cc/gofumpt v0.4.0 // indirect
 	mvdan.cc/interfacer v0.0.0-20180901003855-c20040233aed // indirect
