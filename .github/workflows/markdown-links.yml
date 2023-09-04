@@ -12,7 +12,7 @@ jobs:
         branch: ['main', 'v0.37.x', 'v0.34.x']
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ matrix.branch }}
       - uses: informalsystems/github-action-markdown-link-check@main
